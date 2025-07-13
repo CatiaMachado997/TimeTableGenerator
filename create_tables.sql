@@ -1,0 +1,176 @@
+CREATE TABLE IF NOT EXISTS CoursePlan (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Course TEXT NOT NULL,
+    Class TEXT NOT NULL,
+    Year INTEGER NOT NULL,
+    Semester INTEGER NOT NULL,
+    T REAL,
+    TP REAL,
+    PL REAL
+);
+
+CREATE TABLE IF NOT EXISTS Rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Room TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    AREA TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS UC_Rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Class TEXT NOT NULL,
+    T TEXT,
+    TP TEXT,
+    PL TEXT,
+    Type_Laboratory TEXT
+);
+
+CREATE TABLE IF NOT EXISTS Preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Professor TEXT NOT NULL,
+    Day TEXT NOT NULL,
+    TimeSlot INTEGER NOT NULL,
+    Available INTEGER NOT NULL,
+    UNIQUE(Professor, Day, TimeSlot)
+);
+
+CREATE TABLE IF NOT EXISTS Week_Frame (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Period INTEGER NOT NULL,
+    Start_Time TEXT,
+    End_Time TEXT
+);
+
+CREATE TABLE IF NOT EXISTS Service (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Professor TEXT NOT NULL,
+    Class TEXT NOT NULL,
+    Course TEXT NOT NULL,
+    Year INTEGER NOT NULL,
+    Semester INTEGER NOT NULL,
+    T REAL,
+    TP REAL,
+    PL REAL
+);
+
+CREATE TABLE IF NOT EXISTS Prof_Preferences_v00 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Professor TEXT NOT NULL,
+    Day TEXT NOT NULL,
+    TimeSlot INTEGER NOT NULL,
+    Available INTEGER NOT NULL,
+    UNIQUE(Professor, Day, TimeSlot)
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_CoursePlan (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Course TEXT NOT NULL,
+    Class TEXT NOT NULL,
+    Year INTEGER NOT NULL,
+    Semester INTEGER NOT NULL,
+    T REAL,
+    TP REAL,
+    PL REAL
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Room TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    AREA TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_UC_Rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Class TEXT NOT NULL,
+    T TEXT,
+    TP TEXT,
+    PL TEXT,
+    Type_Laboratory TEXT
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Professor TEXT NOT NULL,
+    Day TEXT NOT NULL,
+    TimeSlot INTEGER NOT NULL,
+    Available INTEGER NOT NULL,
+    UNIQUE(Professor, Day, TimeSlot)
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Service (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    YEAR TEXT NOT NULL,
+    SEMESTER TEXT NOT NULL,
+    COURSE TEXT NOT NULL,
+    CURICULAR_UNIT TEXT NOT NULL,
+    SCHEME TEXT NOT NULL,
+    TEACHER TEXT NOT NULL,
+    Number_Theoretical_classes REAL,
+    Number_Theoretical_Practical_classes INTEGER,
+    Number_Laboratory_classes INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Week_Frame (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Period INTEGER NOT NULL,
+    Start_Time TEXT,
+    End_Time TEXT
+);
+
+CREATE TABLE IF NOT EXISTS Class (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Degree TEXT NOT NULL,
+    Year INTEGER NOT NULL,
+    Semester INTEGER NOT NULL,
+    Course TEXT NOT NULL,
+    Regime TEXT NOT NULL,
+    Language TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    Duration INTEGER NOT NULL,
+    Professor TEXT NOT NULL,
+    Class_Group TEXT NOT NULL,
+    Value REAL
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Output_Example (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Class_Schedule TEXT,
+    "1DA" TEXT,
+    Unnamed_2 TEXT,
+    Unnamed_3 TEXT,
+    Unnamed_4 TEXT,
+    Unnamed_5 TEXT,
+    Unnamed_6 TEXT,
+    Unnamed_7 TEXT,
+    Unnamed_8 TEXT,
+    Unnamed_9 TEXT,
+    Unnamed_10 TEXT,
+    Unnamed_11 TEXT,
+    Unnamed_12 TEXT,
+    Unnamed_13 TEXT,
+    Unnamed_14 TEXT,
+    Unnamed_15 TEXT,
+    Unnamed_16 TEXT,
+    Unnamed_17 TEXT,
+    Unnamed_18 TEXT,
+    Unnamed_19 TEXT,
+    Unnamed_20 TEXT,
+    Unnamed_21 TEXT,
+    Unnamed_22 TEXT,
+    Unnamed_23 TEXT
+);
+
+CREATE TABLE IF NOT EXISTS PRJT2_Output_Template (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Degree TEXT NOT NULL,
+    Year INTEGER NOT NULL,
+    Semester INTEGER NOT NULL,
+    Timetable TEXT NOT NULL,
+    Week_Day INTEGER NOT NULL,
+    Period INTEGER NOT NULL,
+    Course TEXT NOT NULL,
+    Type TEXT NOT NULL,
+    Professor TEXT NOT NULL,
+    Room TEXT NOT NULL
+); 
