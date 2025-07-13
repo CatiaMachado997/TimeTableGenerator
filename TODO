@@ -1,0 +1,4 @@
+The solution_v3 is till not respecting all the hard contraints
+THe database table generation could be simplified to a single .sql
+The solution_v3 is getting all or almost all the classes on the first three days and not using the Thursdat and Friday ones.
+The solution_v3 does not complemeta the emails changes (rest period from 12:00 to 12:30 and 19:00 to 21:00), also it uses the version _v3 of support data
