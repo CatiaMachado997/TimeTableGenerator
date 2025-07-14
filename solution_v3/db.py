@@ -32,7 +32,9 @@ class DatabaseLoader:
                Class_Group as ClassGroup,
                Professor as ProfessorID
         FROM Class
-        ORDER BY Year, Semester, Course, Class_Group
+        WHERE Value > 0
+        GROUP BY Course, Class_Group, Type
+        ORDER BY Year, Semester, Course, Class_Group, Type
         """
         df = pd.read_sql_query(query, self.conn)
         return df.to_dict('records')
@@ -179,8 +181,9 @@ class DatabaseLoader:
                Class_Group as ClassGroup,
                Professor as ProfessorID
         FROM Class
-        WHERE Year = ?
-        ORDER BY Semester, Course, Class_Group
+        WHERE Year = ? AND Value > 0
+        GROUP BY Course, Class_Group, Type
+        ORDER BY Semester, Course, Class_Group, Type
         """
         df = pd.read_sql_query(query, self.conn, params=[year])
         return df.to_dict('records')
@@ -199,8 +202,9 @@ class DatabaseLoader:
                Class_Group as ClassGroup,
                Professor as ProfessorID
         FROM Class
-        WHERE Class_Group = ?
-        ORDER BY Year, Semester, Course
+        WHERE Class_Group = ? AND Value > 0
+        GROUP BY Course, Class_Group, Type
+        ORDER BY Year, Semester, Course, Type
         """
         df = pd.read_sql_query(query, self.conn, params=[class_group])
         return df.to_dict('records') 

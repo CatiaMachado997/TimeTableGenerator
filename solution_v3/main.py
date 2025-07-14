@@ -56,11 +56,14 @@ def main():
         # Analyze data
         print("\n3. Analyzing data...")
         total_periods_needed = sum(course['Periods'] for course in courses)
-        total_available_slots = 5 * 30  # 5 days * 30 periods
+        
+        # Get actual periods from heuristic
+        heuristic = TimetableHeuristic()
+        total_available_slots = 5 * len(heuristic.all_periods)  # 5 days * actual periods
         
         print(f"   - Total periods needed: {total_periods_needed}")
         print(f"   - Total available slots: {total_available_slots}")
-        print(f"   - Theoretical capacity: {total_available_slots / total_periods_needed:.2f} courses per slot")
+        print(f"   - Theoretical capacity: {total_periods_needed / total_available_slots:.2f} courses per slot")
         
         # Class group analysis
         print("\n4. Class group analysis:")
@@ -71,9 +74,9 @@ def main():
         
         # Period structure analysis
         print("\n5. Period structure:")
-        print("   - Morning periods: 1-10 (8:00-12:00)")
-        print("   - Afternoon periods: 11-20 (13:00-17:00)")
-        print("   - Night periods: 21-30 (18:00-22:00)")
+        print(f"   - Morning periods: 1-{len(heuristic.morning_periods)} (8:00-12:00)")
+        print(f"   - Afternoon periods: {heuristic.afternoon_periods[0]}-{heuristic.afternoon_periods[-1]} (13:00-17:00)")
+        print(f"   - Night periods: {heuristic.night_periods[0]}-{heuristic.night_periods[-1]} (18:00-22:00)")
         
         # Class type analysis
         day_classes = [c for c in courses if len(c['ClassGroup']) >= 2 and c['ClassGroup'][1] == 'D']
@@ -86,7 +89,8 @@ def main():
         
         # Build timetable
         print("\n6. Building timetable...")
-        heuristic = TimetableHeuristic()
+        # OPTIMIZATION: Use advanced heuristic with optimized sequential processing and simulated annealing
+        heuristic = TimetableHeuristic(use_parallel=False, use_simulated_annealing=True)
         result = heuristic.build_timetable(courses, rooms, preferences)
         
         timetable = result['timetable']
@@ -122,6 +126,11 @@ def main():
         unassigned_classes = stats.get('unassigned_classes', 0)
         total_courses = assigned_classes + unassigned_classes
         assignment_rate = (assigned_classes / total_courses * 100) if total_courses > 0 else 0
+        
+        # Performance metrics
+        perf_metrics = stats.get('performance_metrics', {})
+        processing_time = result.get('processing_time', 0)
+        
         print(f"   - Total period assignments: {stats['total_assignments']}")
         print(f"   - Unique courses assigned: {stats['unique_courses']}")
         print(f"   - Assigned classes: {assigned_classes}")
@@ -130,6 +139,22 @@ def main():
         print(f"   - Professors with assignments: {stats['professor_assignments']}")
         print(f"   - Rooms used: {stats['room_assignments']}")
         print(f"   - Class groups scheduled: {stats['class_group_assignments']}")
+        
+        # Performance analysis
+        print(f"\n   Performance Analysis:")
+        print(f"   - Processing time: {processing_time:.2f} seconds")
+        print(f"   - Constraint checks: {perf_metrics.get('constraint_checks', 0):,}")
+        print(f"   - Assignment attempts: {perf_metrics.get('assignment_attempts', 0):,}")
+        print(f"   - Checks per attempt: {perf_metrics.get('checks_per_attempt', 0):.2f}")
+        print(f"   - Efficiency: {perf_metrics.get('assignment_attempts', 0) / max(1, processing_time):.0f} attempts/second")
+        
+        # Advanced optimization metrics
+        print(f"\n   Advanced Optimization Metrics:")
+        print(f"   - Parallel assignments: {perf_metrics.get('parallel_assignments', 0)}")
+        print(f"   - Annealing iterations: {perf_metrics.get('annealing_iterations', 0)}")
+        print(f"   - Cache hit rate: {perf_metrics.get('cache_hit_rate', 0):.1f}%")
+        print(f"   - Memory efficiency: Using numpy arrays and bitmasks")
+        print(f"   - Parallel workers: {heuristic.max_workers}")
         
         # Check for potential issues
         if stats['total_assignments'] > 150:
