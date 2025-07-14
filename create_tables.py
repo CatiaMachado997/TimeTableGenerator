@@ -1,7 +1,7 @@
 import sqlite3
 
 def create_tables():
-    conn = sqlite3.connect('timetable-project.db')
+    conn = sqlite3.connect('uctp_database.db')
     cursor = conn.cursor()
     
     try:

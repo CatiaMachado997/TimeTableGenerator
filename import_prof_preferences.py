@@ -3,7 +3,7 @@ import sqlite3
 import os
 
 def import_prof_preferences():
-    conn = sqlite3.connect('timetable-project.db')
+    conn = sqlite3.connect('uctp_database.db')
     cursor = conn.cursor()
     
     file_path = 'dataset/Prof_preferences_v00.xlsx'
@@ -71,7 +71,7 @@ def import_prof_preferences():
         conn.close()
 
 def show_imported_data():
-    conn = sqlite3.connect('timetable-project.db')
+    conn = sqlite3.connect('uctp_database.db')
     cursor = conn.cursor()
     
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Prof_Pref%'")

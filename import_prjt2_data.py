@@ -3,32 +3,47 @@ import sqlite3
 import os
 
 def import_prjt2_data():
-    conn = sqlite3.connect('timetable-project.db')
+    print("Starting PRJT2 data import...")
+    conn = sqlite3.connect('uctp_database.db')
     cursor = conn.cursor()
     
     file_path = 'dataset/PRJT2_Support_Data_V3.xlsx'
+    print(f"Looking for file: {file_path}")
     if not os.path.exists(file_path):
+        print(f"File not found: {file_path}")
         return
+    
+    print(f"File found, proceeding with import...")
     
     try:
         excel_file = pd.ExcelFile(file_path)
+        print(f"Excel file sheets: {excel_file.sheet_names}")
         
         for sheet_name in excel_file.sheet_names:
+            print(f"Processing sheet: {sheet_name}")
             df = pd.read_excel(file_path, sheet_name=sheet_name)
+            print(f"  Sheet shape: {df.shape}")
             
             table_name = f"PRJT2_{sheet_name.replace(' ', '_').replace('-', '_')}"
             
             if sheet_name == 'CoursePlan':
+                print(f"  Importing to PRJT2_CoursePlan...")
                 df.to_sql('PRJT2_CoursePlan', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to PRJT2_CoursePlan")
                 
             elif sheet_name == 'Rooms':
+                print(f"  Importing to PRJT2_Rooms...")
                 df.to_sql('PRJT2_Rooms', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to PRJT2_Rooms")
                 
             elif sheet_name == 'UC_Rooms':
+                print(f"  Importing to PRJT2_UC_Rooms...")
                 df = df.rename(columns={'Unnamed: 0': 'Class'})
                 df.to_sql('PRJT2_UC_Rooms', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to PRJT2_UC_Rooms")
                 
             elif sheet_name == 'Preferences':
+                print(f"  Processing preferences...")
                 preferences_data = []
                 for _, row in df.iterrows():
                     professor = row['Professor']
@@ -46,8 +61,10 @@ def import_prjt2_data():
                 
                 df_preferences_normalized = pd.DataFrame(preferences_data)
                 df_preferences_normalized.to_sql('PRJT2_Preferences', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df_preferences_normalized)} preference rows")
                 
             elif sheet_name == 'Week_Frame':
+                print(f"  Processing week frame...")
                 df_clean = df.dropna()
                 if len(df_clean) > 0:
                     data_row = df_clean.iloc[0]
@@ -57,11 +74,15 @@ def import_prjt2_data():
                     df_clean.columns = ['Period', 'Start_Time', 'End_Time'] + [f'Col_{i}' for i in range(len(df_clean.columns)-3)]
                     df_clean = df_clean[['Period', 'Start_Time', 'End_Time']]
                     df_clean.to_sql('PRJT2_Week_Frame', conn, if_exists='replace', index=False)
+                    print(f"  Imported {len(df_clean)} week frame rows")
                     
             elif sheet_name == 'Service':
+                print(f"  Importing to PRJT2_Service...")
                 df.to_sql('PRJT2_Service', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to PRJT2_Service")
                 
             elif sheet_name.startswith('L-'):
+                print(f"  Processing class data from {sheet_name}...")
                 class_data = []
                 for _, row in df.iterrows():
                     base_data = {
@@ -87,11 +108,17 @@ def import_prjt2_data():
                 if class_data:
                     df_class = pd.DataFrame(class_data)
                     df_class.to_sql('Class', conn, if_exists='append', index=False)
+                    print(f"  Imported {len(df_class)} class rows")
+                else:
+                    print(f"  No class data found in {sheet_name}")
                 
             elif sheet_name in ['Output Example', 'Output Template']:
+                print(f"  Importing to {table_name}...")
                 df.to_sql(f'PRJT2_{sheet_name.replace(" ", "_")}', conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to {table_name}")
                 
             else:
+                print(f"  Importing to generic table {table_name}...")
                 columns = []
                 for col in df.columns:
                     col_type = 'TEXT'
@@ -110,17 +137,20 @@ def import_prjt2_data():
                 cursor.execute(create_sql)
                 
                 df.to_sql(table_name, conn, if_exists='replace', index=False)
+                print(f"  Imported {len(df)} rows to {table_name}")
         
         conn.commit()
+        print("Import completed successfully!")
         
     except Exception as e:
+        print(f"Error during import: {e}")
         conn.rollback()
     
     finally:
         conn.close()
 
 def show_imported_data():
-    conn = sqlite3.connect('timetable-project.db')
+    conn = sqlite3.connect('uctp_database.db')
     cursor = conn.cursor()
     
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'PRJT2%'")
