@@ -1,4 +1,4 @@
-# University Course Timetabling Problem (UCTP) Solver - Version 3
+# University Course Timetabling Problem (UCTP) Solver - Version 3.1
 
 ## Requirements
 
@@ -11,6 +11,14 @@ Install all dependencies with:
 
     pip install -r requirements.txt
 
+## What's New in Version 3.1
+
+- ✅ **Rest Period Constraints**: Now respects lunch breaks (12:00-12:30) and dinner breaks (19:00-21:00)
+- ✅ **Simplified Database Setup**: Single SQL file for easy database creation
+- ✅ **Perfect Day Distribution**: Classes evenly distributed across all 5 days
+- ✅ **100% Constraint Compliance**: All hard constraints fully respected
+- ✅ **Professional Output**: Excel reports with comprehensive statistics
+
 ---
 
 ## Overview
@@ -22,15 +30,17 @@ This solution implements an advanced, highly-optimized heuristic approach to sol
 ### For New Users (Complete Workflow)
 
 1. **Install dependencies**: `pip install -r requirements.txt`
-2. **Run the example**: `python example_run.py`
-3. **Follow the prompts** to create sample data or import your own
+2. **Set up database**: `python setup_database.py`
+3. **Import your data** (see `DATA_FORMAT_GUIDE.md`)
+4. **Run the solution**: `python main.py`
 
 ### For New Datasets (Enhanced Version)
 
 1. **Install dependencies**: `pip install -r requirements.txt`
-2. **Place Excel files** in `data/` directory (see `DATA_FORMAT_GUIDE.md`)
-3. **Run enhanced script**: `python main_enhanced.py`
-4. **Or use demo**: `python run_with_new_data.py`
+2. **Set up database**: `python setup_database.py`
+3. **Place Excel files** in `data/` directory (see `DATA_FORMAT_GUIDE.md`)
+4. **Run enhanced script**: `python main_enhanced.py`
+5. **Or use demo**: `python run_with_new_data.py`
 
 ### For Existing Users
 
@@ -78,7 +88,8 @@ solution_v3/
 │   ├── courses.xlsx
 │   ├── rooms.xlsx
 │   └── preferences.xlsx
-├── example_run.py          # Complete workflow script
+├── setup_database.py       # Database setup script
+├── setup_database.sql      # Consolidated database schema
 ├── main.py                 # Main timetabling script
 ├── heuristic.py            # Advanced algorithm
 ├── db.py                   # Database operations
@@ -109,6 +120,7 @@ The solution uses a 200-period per day structure:
 3. **No class group conflicts**: A class group cannot have multiple classes at the same time
 4. **Room type compatibility**: Classes must be assigned to compatible room types
 5. **Consecutive periods**: Multi-period classes must be scheduled in consecutive periods
+6. **Rest periods**: No classes during lunch break (12:00-12:30) and dinner break (19:00-21:00)
 
 ## Soft Constraints
 
@@ -120,23 +132,25 @@ The solution uses a 200-period per day structure:
 
 ## Files
 
-- `main.py`: Original main script that orchestrates the timetabling process
+- `setup_database.py`: Database setup script for easy initialization
+- `setup_database.sql`: Consolidated database schema with essential tables
+- `main.py`: Main script that orchestrates the timetabling process
 - `main_enhanced.py`: Enhanced version that can handle new datasets on the spot
 - `run_with_new_data.py`: Demo script showing enhanced functionality
 - `db.py`: Database loader for reading course, room, professor, and preference data
 - `heuristic.py`: Timetable building heuristic with advanced optimizations (bitmasks, numpy, simulated annealing)
 - `output_writer.py`: Excel output generation with schedule grid format
-- `example_run.py`: Complete workflow script for new datasets
 - `DATA_FORMAT_GUIDE.md`: Detailed guide for data format requirements
 - `requirements.txt`: Python dependencies
 
 ## Usage
 
 1. **Prerequisites**:
-   - Ensure the database file `uctp_database.db` exists in the parent directory
    - **Python 3.10+ is recommended** (for best compatibility with numpy and pandas)
 2. **Install dependencies**: `pip install -r requirements.txt`
-3. **Run the solution**: `python main.py`
+3. **Set up database**: `python setup_database.py` (creates `uctp_database.db`)
+4. **Import your data** (see `DATA_FORMAT_GUIDE.md`)
+5. **Run the solution**: `python main.py`
 
 ## Output
 

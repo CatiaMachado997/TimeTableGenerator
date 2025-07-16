@@ -10,20 +10,24 @@ import os
 
 class TimetableHeuristic:
     def __init__(self, use_parallel=True, use_simulated_annealing=True):
-        # Period structure: 200 periods per day (increased for better assignment rate)
-        # Periods 1-67: Morning (8:00-12:00)
-        # Periods 68-133: Afternoon (13:00-17:00) 
-        # Periods 134-200: Night (18:00-22:00)
+        # Period structure: 30 periods per day (real university data format)
+        # Periods 1-15: Morning (8:00-12:00)
+        # Periods 16-25: Afternoon (13:00-17:00) 
+        # Periods 26-30: Night (18:00-22:00)
         self.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        self.morning_periods = list(range(1, 68))  # 1-67
-        self.afternoon_periods = list(range(68, 134))  # 68-133
-        self.night_periods = list(range(134, 201))  # 134-200
-        self.all_periods = list(range(1, 201))  # 1-200
-        # self.rest_periods = [9, 10, 19, 20]  # 12:00-12:30 and 19:00-21:00 - TEMPORARILY DISABLED
-        self.rest_periods = []  # Temporarily disabled for testing
+        self.morning_periods = list(range(1, 16))  # 1-15
+        self.afternoon_periods = list(range(16, 26))  # 16-25
+        self.night_periods = list(range(26, 31))  # 26-30
+        self.all_periods = list(range(1, 31))  # 1-30
+        # Rest periods: 12:00-12:30 (lunch break) and 19:00-21:00 (dinner break)
+        # In 30-period system: periods 15 (12:00-12:30) and 26-30 (19:00-22:00)
+        self.rest_periods = [15, 26, 27, 28, 29, 30]
         
         # OPTIMIZATION: Use numpy arrays for better memory efficiency
-        self.timetable = np.zeros((len(self.days), max(self.all_periods), 100), dtype=np.int32)
+        # Change timetable array to dtype=object to store string course IDs
+        # Updated for 30 periods per day and 20 rooms
+        self.timetable = np.empty((len(self.days), max(self.all_periods), 20), dtype=object)
+        self.timetable.fill(None)
         self.assignment_map = {}  # Maps (day_idx, period, room_idx) to course_id
         
         # OPTIMIZATION: Use bitmasks for faster constraint checking
@@ -254,15 +258,19 @@ class TimetableHeuristic:
     def _generate_neighbor_solution(self, current_solution: np.ndarray, 
                                   courses: List[Dict], rooms: List[Dict]) -> Optional[np.ndarray]:
         """Generate a neighbor solution by swapping assignments"""
-        # Find two random assignments to swap
-        assigned_positions = np.where(current_solution > 0)
-        if len(assigned_positions[0]) < 2:
+        # Find two random assignments to swap (work with object arrays)
+        assigned_positions = []
+        for day_idx in range(current_solution.shape[0]):
+            for period_idx in range(current_solution.shape[1]):
+                for room_idx in range(current_solution.shape[2]):
+                    if current_solution[day_idx, period_idx, room_idx] is not None:
+                        assigned_positions.append((day_idx, period_idx, room_idx))
+        
+        if len(assigned_positions) < 2:
             return None
         
         # Select two random assignments
-        idx1, idx2 = random.sample(range(len(assigned_positions[0])), 2)
-        pos1 = (assigned_positions[0][idx1], assigned_positions[1][idx1], assigned_positions[2][idx1])
-        pos2 = (assigned_positions[0][idx2], assigned_positions[1][idx2], assigned_positions[2][idx2])
+        pos1, pos2 = random.sample(assigned_positions, 2)
         
         # Create neighbor solution
         neighbor = current_solution.copy()
@@ -299,8 +307,9 @@ class TimetableHeuristic:
             valid_sequences.sort(key=lambda seq: 
                 sum(1 for p in seq if p in self.afternoon_periods), reverse=True)
         
-        # Try each day with optimized search
-        for day in self.days:
+        # Try each day with optimized search (use load-based day ordering)
+        optimal_days = self._get_optimal_day_order(course)
+        for day in optimal_days:
             for period_seq in valid_sequences:
                 for room in optimal_rooms[:15]:
                     # Thread-safe constraint check
@@ -328,7 +337,7 @@ class TimetableHeuristic:
                             return True, assignment
         
         # Fallback search
-        for day in self.days:
+        for day in optimal_days:
             for period_seq in valid_sequences[:50]:
                 for room in optimal_rooms[:10]:
                     with threading.Lock():
@@ -448,7 +457,7 @@ class TimetableHeuristic:
                 room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room_id), 0)
                 
                 for period in period_seq:
-                    self.timetable[day_idx, period-1, room_idx] = 1
+                    self.timetable[day_idx, period-1, room_idx] = assignment['course_id']
                     self.assignment_map[(day_idx, period-1, room_idx)] = assignment['course_id']
                 
                 # Update room usage stats
@@ -483,8 +492,9 @@ class TimetableHeuristic:
                 valid_sequences.sort(key=lambda seq: 
                     sum(1 for p in seq if p in self.afternoon_periods), reverse=True)
             
-            # Try each day with optimized search
-            for day in self.days:
+            # Try each day with optimized search (use load-based day ordering)
+            optimal_days = self._get_optimal_day_order(course)
+            for day in optimal_days:
                 for period_seq in valid_sequences:
                     for room in optimal_rooms[:15]:
                         if not self._check_bitmask_conflicts(day, period_seq, professor_id, 
@@ -495,12 +505,23 @@ class TimetableHeuristic:
                             self._update_bitmasks(day, period_seq, professor_id, 
                                                 room['RoomID'], class_group, add=True)
                             
+                            # Store assignment in timetable array
+                            day_idx = self.days.index(day)
+                            room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room['RoomID']), 0)
+                            
+                            for period in period_seq:
+                                self.timetable[day_idx, period-1, room_idx] = course_id
+                                self.assignment_map[(day_idx, period-1, room_idx)] = course_id
+                            
+                            # Update room usage stats
+                            self.room_usage_stats[room['RoomID']] += 1
+                            
                             self.assigned_classes += 1
                             return True
             
             # OPTIMIZATION: If no assignment found, try with relaxed constraints (limited search)
             print(f"[DEBUG] No preferred assignment found for {course_id}, trying relaxed search...")
-            for day in self.days:
+            for day in optimal_days:
                 for period_seq in valid_sequences[:50]:
                     for room in optimal_rooms[:10]:
                         if not self._check_bitmask_conflicts(day, period_seq, professor_id, 
@@ -510,6 +531,17 @@ class TimetableHeuristic:
                             # Update bitmasks
                             self._update_bitmasks(day, period_seq, professor_id, 
                                                 room['RoomID'], class_group, add=True)
+                            
+                            # Store assignment in timetable array
+                            day_idx = self.days.index(day)
+                            room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room['RoomID']), 0)
+                            
+                            for period in period_seq:
+                                self.timetable[day_idx, period-1, room_idx] = course_id
+                                self.assignment_map[(day_idx, period-1, room_idx)] = course_id
+                            
+                            # Update room usage stats
+                            self.room_usage_stats[room['RoomID']] += 1
                             
                             self.assigned_classes += 1
                             return True
@@ -582,7 +614,8 @@ class TimetableHeuristic:
         self.professor_bitmasks = defaultdict(lambda: {day: 0 for day in self.days})
         self.room_bitmasks = defaultdict(lambda: {day: 0 for day in self.days})
         self.class_group_bitmasks = defaultdict(lambda: {day: 0 for day in self.days})
-        self.timetable = np.zeros((len(self.days), max(self.all_periods), 100), dtype=np.int32)
+        self.timetable = np.empty((len(self.days), max(self.all_periods), 100), dtype=object)
+        self.timetable.fill(None)
         self.assignment_map = {}
         self.assigned_classes = 0
         self.unassigned_classes = 0
@@ -600,7 +633,7 @@ class TimetableHeuristic:
         self.room_usage_stats = defaultdict(int)
         
         # Calculate capacity constraints
-        total_slots = 5 * 200  # 5 days * 200 periods
+        total_slots = 5 * 30  # 5 days * 30 periods
         total_periods_needed = sum(course['Periods'] for course in courses)
         
         print(f"Total available slots: {total_slots}")
@@ -698,7 +731,11 @@ class TimetableHeuristic:
         for day_idx, day in enumerate(self.days):
             for period in self.all_periods:
                 period_assignments = self.timetable[day_idx, period-1, :]
-                assigned_rooms = np.where(period_assignments > 0)[0]
+                assigned_rooms = []
+                
+                for room_idx in range(period_assignments.shape[0]):
+                    if period_assignments[room_idx] is not None:
+                        assigned_rooms.append(room_idx)
                 
                 if len(assigned_rooms) > 1:
                     # Multiple assignments in the same time slot
@@ -729,7 +766,11 @@ class TimetableHeuristic:
         for day_idx, day in enumerate(self.days):
             for period in self.all_periods:
                 period_assignments = self.timetable[day_idx, period-1, :]
-                assigned_rooms = np.where(period_assignments > 0)[0]
+                assigned_rooms = []
+                
+                for room_idx in range(period_assignments.shape[0]):
+                    if period_assignments[room_idx] is not None:
+                        assigned_rooms.append(room_idx)
                 
                 if len(assigned_rooms) > 1:
                     # Multiple assignments in the same time slot
@@ -752,12 +793,15 @@ class TimetableHeuristic:
         for day_idx in range(len(self.days)):
             for period in self.all_periods:
                 period_assignments = self.timetable[day_idx, period-1, :]
-                assigned_count = np.count_nonzero(period_assignments)
-                total_period_assignments += assigned_count
+                assigned_count = 0
                 
-                for room_idx in np.where(period_assignments > 0)[0]:
-                    course_id = self.assignment_map.get((day_idx, period-1, room_idx), 'Unknown')
-                    unique_courses.add(course_id)
+                for room_idx in range(period_assignments.shape[0]):
+                    if period_assignments[room_idx] is not None:
+                        assigned_count += 1
+                        course_id = self.assignment_map.get((day_idx, period-1, room_idx), 'Unknown')
+                        unique_courses.add(course_id)
+                
+                total_period_assignments += assigned_count
         
         assigned_classes = len(unique_courses)
         return {
@@ -777,3 +821,33 @@ class TimetableHeuristic:
                 'cache_hit_rate': self.cache_hits / max(1, self.cache_hits + self.cache_misses) * 100
             }
         } 
+
+    def _get_day_loads(self) -> Dict[str, int]:
+        """Calculate current load (number of assignments) for each day"""
+        day_loads = {day: 0 for day in self.days}
+        
+        for day_idx, day in enumerate(self.days):
+            for period in self.all_periods:
+                period_assignments = self.timetable[day_idx, period-1, :]
+                for room_idx in range(period_assignments.shape[0]):
+                    if period_assignments[room_idx] is not None:
+                        day_loads[day] += 1
+        
+        return day_loads
+    
+    def _get_optimal_day_order(self, course: Dict) -> List[str]:
+        """Get optimal day ordering for better distribution"""
+        day_loads = self._get_day_loads()
+        
+        # Sort days by load (prefer less loaded days)
+        sorted_days = sorted(self.days, key=lambda day: day_loads[day])
+        
+        # For year 2 courses, prefer Tuesday-Thursday (middle of week)
+        if course['Year'] == 2:
+            # Reorder to prefer middle days
+            middle_days = ['Tuesday', 'Wednesday', 'Thursday']
+            other_days = [day for day in sorted_days if day not in middle_days]
+            return middle_days + other_days
+        
+        # For other years, use load-based ordering
+        return sorted_days 
