@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Enhanced University Course Timetabling Problem (UCTP) Solver
-Mechanical Engineering Department (DEM) - ISEP
+Mechanical Engineering Department (DEM)
 
 This enhanced version can handle new datasets on the spot:
 - Import Excel files directly
@@ -140,7 +140,7 @@ def main():
     
     print("=" * 60)
     print("Enhanced University Course Timetabling Problem (UCTP) Solver")
-    print("Mechanical Engineering Department (DEM) - ISEP")
+    print("Mechanical Engineering Department (DEM)")
     print("=" * 60)
     
     # Initialize dataset handler

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 University Course Timetabling Problem (UCTP) Solver
-Mechanical Engineering Department (DEM) - ISEP
+Mechanical Engineering Department (DEM)
 
 This script implements a heuristic approach to solve the UCTP with:
 - 30 periods per day (1-10 morning, 11-20 afternoon, 21-30 night)
@@ -62,7 +62,7 @@ def main():
     
     print("=" * 60)
     print("University Course Timetabling Problem (UCTP) Solver")
-    print("Mechanical Engineering Department (DEM) - ISEP")
+    print("Mechanical Engineering Department (DEM)")
     print("=" * 60)
     
     # Configuration
