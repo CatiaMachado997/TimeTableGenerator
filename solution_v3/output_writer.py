@@ -1,6 +1,8 @@
 import pandas as pd
 from typing import Dict, List
 import os
+import pandas as pd
+from tqdm import tqdm
 
 class OutputWriter:
     def __init__(self, output_dir: str = "output"):
@@ -18,30 +20,49 @@ class OutputWriter:
         
         # Get all class groups
         class_groups = list(set(course['ClassGroup'] for course in courses))
+        class_groups = [cg for cg in class_groups if cg and cg != 'Unknown']
         class_groups.sort()
         
+        # Warn if timetable is empty for all class groups
+        total_assignments = 0
+        for day in timetable:
+            for period in timetable[day]:
+                for room_id, assignment in timetable[day][period].items():
+                    if assignment:
+                        total_assignments += 1
+        if total_assignments == 0:
+            print("[WARNING] Timetable is empty: no assignments found. Check your input data and constraints. See the FAQ in the README for troubleshooting.")
         # Create Excel writer
         output_path = os.path.join(self.output_dir, filename)
         with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-            
-            # Create one sheet per class group
-            for class_group in class_groups:
-                self._create_class_group_sheet(writer, timetable, class_group, 
-                                             prof_map, room_map)
-            
-            # Create summary sheet
-            self._create_summary_sheet(writer, timetable, courses, class_groups)
+            sheets_created = False
+            if class_groups:
+                # Create one sheet per class group with progress bar
+                for class_group in tqdm(class_groups, desc='Writing class group sheets', unit='sheet'):
+                    self._create_class_group_sheet(writer, timetable, class_group, 
+                                                 prof_map, room_map)
+                    sheets_created = True
+                # Create summary sheet
+                self._create_summary_sheet(writer, timetable, courses, class_groups)
+                sheets_created = True
+            if not sheets_created:
+                # Fallback: Write a dummy sheet if no class groups or no sheets created
+                print("[WARNING] No class groups found or no sheets created. Writing dummy sheet to avoid Excel error.")
+                df_dummy = pd.DataFrame({'Info': ['No class groups found. Timetable is empty.']})
+                df_dummy.to_excel(writer, sheet_name='Info', index=False)
         
         print(f"Complete timetable written to: {output_path}")
-        print(f"   - {len(class_groups)} class group sheets")
-        print(f"   - 1 summary sheet")
+        if class_groups:
+            print(f"   - {len(class_groups)} class group sheets")
+            print(f"   - 1 summary sheet")
+        else:
+            print(f"   - 1 dummy info sheet (no class groups)")
         
         return output_path
     
     def _create_class_group_sheet(self, writer, timetable: Dict, class_group: str,
                                  prof_map: Dict, room_map: Dict):
         """Create a sheet for a specific class group"""
-        
         # Create data structure for the grid
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
         periods = list(range(1, 31))  # 1-30 periods
@@ -75,6 +96,16 @@ class OutputWriter:
         
         # Create DataFrame
         df = pd.DataFrame(grid_data, columns=pd.Index(['Period'] + days))
+        if df.empty:
+            print(f"[WARNING] DataFrame for class_group {class_group} is empty. Writing dummy row.")
+            df = pd.DataFrame({
+                'Period': ['No data'],
+                'Monday': [''],
+                'Tuesday': [''],
+                'Wednesday': [''],
+                'Thursday': [''],
+                'Friday': ['']
+            })
         
         # Write to Excel
         sheet_name = f"Class_{class_group.replace(' ', '_')}"
@@ -140,7 +171,7 @@ class OutputWriter:
             summary_data.append([class_group, class_group_assignments])
         
         # Create DataFrame and write to Excel
-        df = pd.DataFrame(summary_data, columns=['Metric', 'Value'])
+        df = pd.DataFrame(summary_data, columns=pd.Index(['Metric', 'Value']))
         df.to_excel(writer, sheet_name='Summary', index=False)
         
         # Auto-adjust column widths
@@ -183,16 +214,16 @@ class OutputWriter:
         print(f"Total unassigned: {len(unassigned_courses)}")
         
         # Breakdown by year
-        year_counts = df['Year'].value_counts()
-        print("\nBy Year:")
-        for year, count in year_counts.items():
-            print(f"  Year {year}: {count}")
-        
-        # Breakdown by class group
-        group_counts = df['ClassGroup'].value_counts()
-        print("\nBy Class Group:")
-        for group, count in group_counts.items():
-            print(f"  {group}: {count}")
+        if isinstance(df, pd.DataFrame):
+            year_counts = df['Year'].value_counts()
+            print("\nBy Year:")
+            for year, count in year_counts.items():
+                print(f"  Year {year}: {count}")
+            # Breakdown by class group
+            group_counts = df['ClassGroup'].value_counts()
+            print("\nBy Class Group:")
+            for group, count in group_counts.items():
+                print(f"  {group}: {count}")
         
         return output_path
     

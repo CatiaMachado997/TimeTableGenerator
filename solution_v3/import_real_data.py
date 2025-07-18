@@ -59,8 +59,8 @@ def import_real_data(db_path: str = "uctp_database.db"):
             semester = row['Semester']
             
             # Create records for each class type (T, TP, PL)
-            t_value = row['T']
-            if not pd.isna(t_value) and float(t_value) > 0:
+            t_value = row.get('T', None)
+            if t_value is not None and pd.notna(t_value) and float(t_value) > 0:
                 class_records.append({
                     'Degree': 'MEGI',
                     'Year': year,
@@ -75,8 +75,8 @@ def import_real_data(db_path: str = "uctp_database.db"):
                     'Value': 1.0
                 })
             
-            tp_value = row['TP']
-            if not pd.isna(tp_value) and float(tp_value) > 0:
+            tp_value = row.get('TP', None)
+            if tp_value is not None and pd.notna(tp_value) and float(tp_value) > 0:
                 class_records.append({
                     'Degree': 'MEGI',
                     'Year': year,
@@ -91,8 +91,8 @@ def import_real_data(db_path: str = "uctp_database.db"):
                     'Value': 1.0
                 })
             
-            pl_value = row['PL']
-            if not pd.isna(pl_value) and float(pl_value) > 0:
+            pl_value = row.get('PL', None)
+            if pl_value is not None and pd.notna(pl_value) and float(pl_value) > 0:
                 class_records.append({
                     'Degree': 'MEGI',
                     'Year': year,
@@ -137,8 +137,11 @@ def import_real_data(db_path: str = "uctp_database.db"):
                 for period in range(1, 31):
                     column = f"{day}_{period}"
                     if column in row:
-                        cell_value = row[column]
-                        available = int(cell_value) if not pd.isna(cell_value) and cell_value is not None else 0
+                        cell_value = row.get(column, None)
+                        if cell_value is not None and pd.notna(cell_value):
+                            available = int(cell_value)
+                        else:
+                            available = 0
                         preference_records.append({
                             'Professor': professor,
                             'Day': day_name,
@@ -216,6 +219,7 @@ def import_real_data(db_path: str = "uctp_database.db"):
 
 def main():
     """Main function"""
+    print('[DEBUG] ENTERED main()')
     if len(sys.argv) > 1:
         db_path = sys.argv[1]
     else:

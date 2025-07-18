@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import math
 import numpy as np
 import os
+from tqdm import tqdm
 
 class TimetableHeuristic:
     def __init__(self, use_parallel=True, use_simulated_annealing=True):
@@ -442,135 +443,84 @@ class TimetableHeuristic:
         return score
     
     def assign_course(self, course: Dict, rooms: List[Dict], preferences: List[Dict]) -> bool:
-        """Assign a course using OPTIMIZED greedy approach - now supports parallel processing"""
-        if self.use_parallel:
-            # Use parallel processing for course assignment
-            success, assignment = self._parallel_assign_course(course, rooms, preferences)
-            if success:
-                # Apply the assignment
-                day = assignment['day']
-                period_seq = assignment['period_seq']
-                room_id = assignment['room_id']
-                
-                # Update timetable (convert to traditional format for compatibility)
-                day_idx = self.days.index(day)
-                room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room_id), 0)
-                
-                for period in period_seq:
-                    self.timetable[day_idx, period-1, room_idx] = assignment['course_id']
-                    self.assignment_map[(day_idx, period-1, room_idx)] = assignment['course_id']
-                
-                # Update room usage stats
-                self.room_usage_stats[room_id] += 1
-                
-                print(f"[DEBUG] Found assignment: {assignment['course_id']} -> {day} periods {period_seq} room {room_id}")
-                return True
-            
-            print(f"[DEBUG] No valid assignment found for {course['CourseID']} - {course['ClassGroup']}")
-            return False
-        else:
-            # Original sequential assignment logic
-            course_id = course['CourseID']
-            class_group = course['ClassGroup']
-            professor_id = course['ProfessorID']
-            periods_needed = course['Periods']
-            year = course['Year']
-            
-            self.assignment_attempts += 1
-            
-            # OPTIMIZATION: Get optimal room ordering
-            optimal_rooms = self._get_optimal_rooms(course, rooms)
-            
-            # Get valid period sequences for this class
-            valid_sequences = self.get_valid_periods_for_class(class_group, periods_needed)
-            
-            # OPTIMIZATION: Sort sequences by preference
-            if year in [1, 3]:
-                valid_sequences.sort(key=lambda seq: 
-                    sum(1 for p in seq if p in self.morning_periods), reverse=True)
-            elif year == 2:
-                valid_sequences.sort(key=lambda seq: 
-                    sum(1 for p in seq if p in self.afternoon_periods), reverse=True)
-            
-            # Try each day with optimized search (use load-based day ordering)
-            optimal_days = self._get_optimal_day_order(course)
-            for day in optimal_days:
-                for period_seq in valid_sequences:
-                    for room in optimal_rooms[:15]:
-                        if not self._check_bitmask_conflicts(day, period_seq, professor_id, 
-                                                            room['RoomID'], class_group):
-                            print(f"[DEBUG] Found assignment: {course_id} -> {day} periods {period_seq} room {room['RoomID']}")
-                            
-                            # Update bitmasks
-                            self._update_bitmasks(day, period_seq, professor_id, 
-                                                room['RoomID'], class_group, add=True)
-                            
-                            # Store assignment in timetable array
-                            day_idx = self.days.index(day)
-                            room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room['RoomID']), 0)
-                            
-                            for period in period_seq:
-                                self.timetable[day_idx, period-1, room_idx] = course_id
-                                self.assignment_map[(day_idx, period-1, room_idx)] = course_id
-                            
-                            # Update room usage stats
-                            self.room_usage_stats[room['RoomID']] += 1
-                            
-                            self.assigned_classes += 1
-                            return True
-            
-            # OPTIMIZATION: If no assignment found, try with relaxed constraints (limited search)
-            print(f"[DEBUG] No preferred assignment found for {course_id}, trying relaxed search...")
-            for day in optimal_days:
-                for period_seq in valid_sequences[:50]:
-                    for room in optimal_rooms[:10]:
-                        if not self._check_bitmask_conflicts(day, period_seq, professor_id, 
-                                                            room['RoomID'], class_group):
-                            print(f"[DEBUG] Found relaxed assignment: {course_id} -> {day} periods {period_seq} room {room['RoomID']}")
-                            
-                            # Update bitmasks
-                            self._update_bitmasks(day, period_seq, professor_id, 
-                                                room['RoomID'], class_group, add=True)
-                            
-                            # Store assignment in timetable array
-                            day_idx = self.days.index(day)
-                            room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room['RoomID']), 0)
-                            
-                            for period in period_seq:
-                                self.timetable[day_idx, period-1, room_idx] = course_id
-                                self.assignment_map[(day_idx, period-1, room_idx)] = course_id
-                            
-                            # Update room usage stats
-                            self.room_usage_stats[room['RoomID']] += 1
-                            
-                            self.assigned_classes += 1
-                            return True
-            
-            print(f"[DEBUG] No valid assignment found for {course_id} - {class_group}")
-            self.unassigned_classes += 1
-            return False
+        """Assign a course using OPTIMIZED greedy approach with soft constraint scoring"""
+        course_id = course['CourseID']
+        class_group = course['ClassGroup']
+        professor_id = course['ProfessorID']
+        periods_needed = course['Periods']
+        year = course['Year']
+        assigned = False
+        optimal_rooms = self._get_optimal_rooms(course, rooms)
+        valid_sequences = self.get_valid_periods_for_class(class_group, periods_needed)
+        if year in [1, 3]:
+            valid_sequences.sort(key=lambda seq: sum(1 for p in seq if p in self.morning_periods), reverse=True)
+        elif year == 2:
+            valid_sequences.sort(key=lambda seq: sum(1 for p in seq if p in self.afternoon_periods), reverse=True)
+        optimal_days = self._get_optimal_day_order(course)
 
-    def _is_valid_assignment(self, day: str, period_seq: List[int], room_id: str, 
-                             professor_id: str, class_group: str, course: Dict, room: Dict) -> bool:
+        # --- SOFT CONSTRAINT SCORING ---
+        best_score = -float('inf')
+        best_assignment = None
+        for day in optimal_days:
+            for period_seq in valid_sequences:
+                for room in optimal_rooms:
+                    if self._is_valid_assignment(day, period_seq, room['RoomID'], professor_id, class_group, course, room):
+                        score = self._calculate_soft_constraint_score(day, period_seq, room['RoomID'], professor_id, year, preferences)
+                        if score > best_score:
+                            best_score = score
+                            best_assignment = (day, period_seq, room['RoomID'], room)
+        if best_assignment:
+            day, period_seq, room_id, room = best_assignment
+            self._apply_assignment(day, period_seq, room_id, course)
+            # Track soft constraint satisfaction
+            self._track_soft_constraint_stats(day, period_seq, professor_id, year, preferences)
+            print(f"Assigned with soft constraint score {best_score}: {course_id} -> {day} periods {period_seq} room {room_id}")
+            return True
+        print(f"No preferred assignment found for {course_id}, trying relaxed search...")
+        for day in optimal_days:
+            for period_seq in valid_sequences[:50]:
+                for room in optimal_rooms[:10]:
+                    if not self._check_bitmask_conflicts(day, period_seq, professor_id, room['RoomID'], class_group):
+                        self._update_bitmasks(day, period_seq, professor_id, room['RoomID'], class_group, add=True)
+                        day_idx = self.days.index(day)
+                        room_idx = next((i for i, r in enumerate(rooms) if r['RoomID'] == room['RoomID']), 0)
+                        for period in period_seq:
+                            self.timetable[day_idx, period-1, room_idx] = course_id
+                            self.assignment_map[(day_idx, period-1, room_idx)] = course_id
+                        self.room_usage_stats[room['RoomID']] += 1
+                        self.assigned_classes += 1
+                        # Track as not satisfying soft constraints
+                        self._track_soft_constraint_stats(day, period_seq, professor_id, year, preferences, satisfied=False)
+                        return True
+        print(f"No valid assignment found for {course_id} - {class_group}")
+        self.unassigned_classes += 1
+        return False
+
+    def _is_valid_assignment(self, day: str, period_seq: List[int], room_id: str, professor_id: str, class_group: str, course: Dict, room: Dict) -> bool:
         """Check if an assignment violates hard constraints - OPTIMIZED"""
         # Check rest periods
         for period in period_seq:
             if period in self.rest_periods:
-                print(f"[DEBUG] Rest period violation: {period}")
+                print(f"Rest period violation: {period}")
                 return False
-        
         # OPTIMIZATION: Use bitmask check instead of manual iteration
         if self._check_bitmask_conflicts(day, period_seq, professor_id, room_id, class_group):
+            print(f"Bitmask conflict: day={day}, periods={period_seq}, professor={professor_id}, room={room_id}, class_group={class_group}")
             return False
-        
         # Check room type compatibility if info is provided
         required_type = course.get('RequiredRoomType')
         room_type = room.get('RoomType')
         if required_type and room_type and required_type != room_type:
-            print(f"[DEBUG] Room type mismatch: required={required_type}, available={room_type}")
+            print(f"Room type mismatch: required={required_type}, available={room_type}")
             return False
-        
-        print(f"[DEBUG] Assignment valid: {course.get('CourseID', 'Unknown')} -> {day} periods {period_seq} room {room_id}")
+        # Check class group constraints (D/N/other)
+        if len(class_group) >= 2:
+            if class_group[1] == 'D' and any(p in self.night_periods for p in period_seq):
+                print(f"Day class group scheduled in night period: {class_group}, periods={period_seq}")
+                return False
+            if class_group[1] == 'N' and any(p not in self.night_periods for p in period_seq):
+                print(f"Night class group scheduled outside night period: {class_group}, periods={period_seq}")
+                return False
         return True
 
     def _apply_assignment(self, day: str, period_seq: List[int], room_id: str, course: Dict):
@@ -679,16 +629,10 @@ class TimetableHeuristic:
                         self.unassigned_classes += 1
         else:
             # Sequential processing
-            for i, course in enumerate(sorted_courses):
-                if i % 20 == 0:
-                    print(f"Processing course {i+1}/{len(courses)}: {course['CourseID']}")
-                
+            for i, course in enumerate(tqdm(sorted_courses, desc='Assigning courses', unit='course')):
                 assigned = self.assign_course(course, rooms, preferences)
                 if not assigned:
                     unassigned.append(course)
-                    self.unassigned_classes += 1
-                    print(f"Could not assign: {course['CourseID']} - {course['CourseName']} "
-                          f"({course['ClassGroup']})")
         
         # Apply simulated annealing optimization if enabled
         if self.use_simulated_annealing and self.assigned_classes > 0:
@@ -851,3 +795,29 @@ class TimetableHeuristic:
         
         # For other years, use load-based ordering
         return sorted_days 
+
+    def _track_soft_constraint_stats(self, day, period_seq, professor_id, year, preferences, satisfied=True):
+        if not hasattr(self, 'soft_constraint_stats'):
+            self.soft_constraint_stats = {'prof_pref_total': 0, 'prof_pref_satisfied': 0, 'year_pref_total': 0, 'year_pref_satisfied': 0}
+        # Professor preference
+        for period in period_seq:
+            self.soft_constraint_stats['prof_pref_total'] += 1
+            prof_score = self.calculate_preference_score(professor_id, day, [period], preferences)
+            if prof_score > 0:
+                self.soft_constraint_stats['prof_pref_satisfied'] += 1
+        # Year-based preference
+        for period in period_seq:
+            self.soft_constraint_stats['year_pref_total'] += 1
+            if (year in [1, 3] and period in self.morning_periods) or (year == 2 and period in self.afternoon_periods):
+                self.soft_constraint_stats['year_pref_satisfied'] += 1
+
+    def report_soft_constraint_stats(self):
+        if hasattr(self, 'soft_constraint_stats'):
+            stats = self.soft_constraint_stats
+            prof_pct = 100.0 * stats['prof_pref_satisfied'] / max(1, stats['prof_pref_total'])
+            year_pct = 100.0 * stats['year_pref_satisfied'] / max(1, stats['year_pref_total'])
+            print(f"\nSoft Constraint Satisfaction:")
+            print(f"  - Professor preferences satisfied: {prof_pct:.1f}%")
+            print(f"  - Year-based period preferences satisfied: {year_pct:.1f}%")
+        else:
+            print("No soft constraint statistics available.") 

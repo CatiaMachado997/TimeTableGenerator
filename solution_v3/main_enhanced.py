@@ -19,125 +19,183 @@ from pathlib import Path
 from db import DatabaseLoader
 from heuristic import TimetableHeuristic
 from output_writer import OutputWriter
+import json
+
+def find_dir_with_files(target_dirname, required_files):
+    """Search upward from script and cwd for a directory named target_dirname containing all required_files."""
+    search_dirs = [
+        os.path.dirname(os.path.abspath(__file__)),
+        os.getcwd()
+    ]
+    # Add parent directories up to root
+    for base in list(search_dirs):
+        parent = base
+        while True:
+            parent = os.path.dirname(parent)
+            if parent and parent not in search_dirs:
+                search_dirs.append(parent)
+            if parent == '/' or parent == '' or parent == os.path.dirname(parent):
+                break
+    checked = set()
+    for base in search_dirs:
+        candidate = os.path.join(base, target_dirname)
+        if candidate in checked:
+            continue
+        checked.add(candidate)
+        if os.path.isdir(candidate):
+            if all(os.path.exists(os.path.join(candidate, f)) for f in required_files):
+                print(f"[PATH-FINDER] Using {candidate} for {target_dirname}")
+                return candidate
+    print(f"[PATH-FINDER] Could not find {target_dirname} with required files. Using default.")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), target_dirname)
+
+# Dynamically resolve data and dataset directories
+DATA_DIR = find_dir_with_files('data', ['courses.xlsx', 'rooms.xlsx', 'preferences.xlsx'])
+DATASET_DIR = find_dir_with_files('dataset', ['PRJT2_Support_Data_V3.xlsx', 'Prof_preferences_v00.xlsx'])
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(SCRIPT_DIR, 'uctp_database.db')
+
+def transform_dataset_to_data(dataset_dir=DATASET_DIR, data_dir=DATA_DIR):
+    # Remove or comment out debug prints for delivery
+    # print('[DEBUG] ENTERED transform_dataset_to_data')
+    # print(f'[DEBUG] dataset_dir: {dataset_dir}')
+    # print(f'[DEBUG] data_dir: {data_dir}')
+    courseplan_path = os.path.join(dataset_dir, 'PRJT2_Support_Data_V3.xlsx')
+    # print(f'[DEBUG] courseplan_path: {courseplan_path}')
+    courses_xlsx_path = os.path.join(data_dir, 'courses.xlsx')
+    rooms_xlsx_path = os.path.join(data_dir, 'rooms.xlsx')
+    preferences_xlsx_path = os.path.join(data_dir, 'preferences.xlsx')
+    # print(f"[DEBUG] Reading courseplan from: {courseplan_path}")
+    if os.path.exists(courseplan_path):
+        # print('[DEBUG] courseplan_path exists, proceeding to read Excel')
+        df_courses = pd.read_excel(courseplan_path, sheet_name='CoursePlan')
+        # print('[DEBUG] Read CoursePlan sheet')
+        df_courses.columns = [c.strip() for c in df_courses.columns]
+        melted = df_courses.melt(
+            id_vars=['Course', 'Class', 'Year', 'Semester'],
+            value_vars=['T', 'TP', 'PL'],
+            var_name='Type', value_name='Duration'
+        )
+        # print('[DEBUG] Melted DataFrame')
+        melted = melted.dropna(subset=['Duration'])
+        # print('[DEBUG] Dropped NA Duration')
+        melted['Class_Group'] = melted['Class'].astype(str)
+        if 'Professor' in df_courses.columns:
+            melted['Professor'] = melted['Professor'].astype(str)
+        else:
+            melted['Professor'] = 'Unknown'
+        melted['Value'] = 1
+        melted = melted[['Course', 'Year', 'Semester', 'Type', 'Duration', 'Class_Group', 'Professor', 'Value']]
+        melted.to_excel(courses_xlsx_path, index=False)
+        print(f"✅ courses.xlsx written to {courses_xlsx_path}")
+    else:
+        print('[ERROR] courseplan_path does not exist, skipping courses.xlsx')
+    # ... (do the same for rooms and preferences if needed)
 
 class DatasetHandler:
     """Handles new dataset import and validation"""
-    
-    def __init__(self):
+    def __init__(self, data_dir=DATA_DIR):
+        self.data_dir = os.path.abspath(data_dir)
         self.required_columns = {
             'courses': ['Course', 'Year', 'Semester', 'Type', 'Duration', 'Class_Group', 'Professor', 'Value'],
             'rooms': ['Room ', 'Type', 'AREA'],
             'preferences': ['Professor', 'Day', 'TimeSlot', 'Available']
         }
-    
     def validate_excel_file(self, file_path: str, file_type: str) -> bool:
-        """Validate Excel file format and required columns"""
         try:
+            if file_path is None or not isinstance(file_path, str):
+                return False
+            file_path = os.path.abspath(file_path)
+            print(f"[DEBUG] Validating {file_type} at: {file_path}")
             if not os.path.exists(file_path):
                 print(f"❌ File not found: {file_path}")
                 return False
-            
             df = pd.read_excel(file_path)
             required_cols = self.required_columns[file_type]
-            
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
                 print(f"❌ Missing columns in {file_type}.xlsx: {missing_cols}")
                 return False
-            
             print(f"✅ {file_type}.xlsx validated successfully ({len(df)} records)")
             return True
-            
         except Exception as e:
             print(f"❌ Error validating {file_type}.xlsx: {e}")
             return False
-    
-    def create_database_from_excel(self, data_dir: str, db_path: str = "uctp_database.db") -> bool:
-        """Create SQLite database from Excel files"""
+    def create_database_from_excel(self, data_dir: str = None, db_path: str = None) -> bool:
+        if data_dir is None or not isinstance(data_dir, str):
+            data_dir = self.data_dir
+        if db_path is None or not isinstance(db_path, str):
+            db_path = DB_PATH
+        data_dir = os.path.abspath(data_dir)
+        db_path = os.path.abspath(db_path)
         print(f"\n📁 Creating database from Excel files in {data_dir}...")
-        
-        # Validate all files first
         files_to_check = [
             (os.path.join(data_dir, "courses.xlsx"), "courses"),
             (os.path.join(data_dir, "rooms.xlsx"), "rooms"),
             (os.path.join(data_dir, "preferences.xlsx"), "preferences")
         ]
-        
         for file_path, file_type in files_to_check:
+            file_path = os.path.abspath(file_path)
+            print(f"[DEBUG] Checking file for DB import: {file_path}")
             if not self.validate_excel_file(file_path, file_type):
                 return False
-        
-        # Create database
         conn = sqlite3.connect(db_path)
-        
         try:
-            # Import courses
             courses_file = os.path.join(data_dir, "courses.xlsx")
             print(f"  📊 Importing courses from {courses_file}")
-            courses_df = pd.read_excel(courses_file)
+            courses_df = pd.read_excel(os.path.abspath(courses_file))
             courses_df.to_sql('Class', conn, if_exists='replace', index=False)
             print(f"    - Imported {len(courses_df)} course records")
-            
-            # Import rooms
             rooms_file = os.path.join(data_dir, "rooms.xlsx")
             print(f"  🏢 Importing rooms from {rooms_file}")
-            rooms_df = pd.read_excel(rooms_file)
+            rooms_df = pd.read_excel(os.path.abspath(rooms_file))
             rooms_df.to_sql('Rooms', conn, if_exists='replace', index=False)
             print(f"    - Imported {len(rooms_df)} room records")
-            
-            # Import preferences
             preferences_file = os.path.join(data_dir, "preferences.xlsx")
             print(f"  👨‍🏫 Importing preferences from {preferences_file}")
-            preferences_df = pd.read_excel(preferences_file)
+            preferences_df = pd.read_excel(os.path.abspath(preferences_file))
             preferences_df.to_sql('Preferences', conn, if_exists='replace', index=False)
             print(f"    - Imported {len(preferences_df)} preference records")
-            
-            # Create indexes
             print("  🔍 Creating database indexes...")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_class_course ON Class(Course)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_class_professor ON Class(Professor)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_preferences_professor ON Preferences(Professor)")
-            
             conn.commit()
             print(f"✅ Database created successfully: {db_path}")
             return True
-            
         except Exception as e:
             print(f"❌ Error creating database: {e}")
             conn.rollback()
             return False
         finally:
             conn.close()
-    
     def detect_data_sources(self) -> dict:
-        """Detect available data sources"""
         sources = {
             'excel_files': False,
             'existing_database': False,
             'data_directory': False
         }
-        
-        # Check for Excel files in data/ directory
-        data_dir = "data"
+        data_dir = self.data_dir
+        data_dir = os.path.abspath(data_dir)
+        print(f"[DEBUG] Checking data_dir for sources: {data_dir}")
         if os.path.exists(data_dir):
             excel_files = [
                 os.path.join(data_dir, "courses.xlsx"),
                 os.path.join(data_dir, "rooms.xlsx"),
                 os.path.join(data_dir, "preferences.xlsx")
             ]
-            if all(os.path.exists(f) for f in excel_files):
+            for f in excel_files:
+                print(f"[DEBUG] Checking existence of: {os.path.abspath(f)}")
+            if all(os.path.exists(os.path.abspath(f)) for f in excel_files):
                 sources['excel_files'] = True
                 sources['data_directory'] = True
-        
-        # Check for existing database
-        if os.path.exists("uctp_database.db"):
+        if os.path.exists(os.path.abspath(DB_PATH)):
+            print(f"[DEBUG] Found database at: {os.path.abspath(DB_PATH)}")
             sources['existing_database'] = True
-        
         return sources
 
 def main():
-    """Enhanced main function that can handle new datasets on the spot"""
-    
+    print('[DEBUG] ENTERED main()')
     print("=" * 60)
     print("Enhanced University Course Timetabling Problem (UCTP) Solver")
     print("Mechanical Engineering Department (DEM)")
@@ -146,9 +204,29 @@ def main():
     # Initialize dataset handler
     dataset_handler = DatasetHandler()
     
+    # Check for original dataset and auto-transform if needed
+    dataset_dir = DATASET_DIR
+    data_dir = DATA_DIR
+    db_path = DB_PATH
+    print('[DEBUG] Forcing call to transform_dataset_to_data for debugging')
+    transform_dataset_to_data(dataset_dir, data_dir)
+    data_files = [os.path.join(data_dir, f) for f in ['courses.xlsx', 'rooms.xlsx', 'preferences.xlsx']]
+    if os.path.exists(dataset_dir) and (not all(os.path.exists(f) for f in data_files)):
+        print('[DEBUG] Calling transform_dataset_to_data (missing data files)')
+        os.makedirs(data_dir, exist_ok=True)
+        transform_dataset_to_data(dataset_dir, data_dir)
+    
     # Detect available data sources
     print("\n🔍 Detecting available data sources...")
     sources = dataset_handler.detect_data_sources()
+    
+    # PATCH: If no data sources found, but dataset exists, force transformation and re-check
+    if not sources['excel_files'] and not sources['existing_database']:
+        if os.path.exists(dataset_dir):
+            print('[DEBUG] Calling transform_dataset_to_data (no data sources found)')
+            os.makedirs(data_dir, exist_ok=True)
+            transform_dataset_to_data(dataset_dir, data_dir)
+            sources = dataset_handler.detect_data_sources()
     
     if sources['excel_files']:
         print("  ✅ Found Excel files in data/ directory")
@@ -156,9 +234,9 @@ def main():
         print("  ✅ Found existing database (uctp_database.db)")
     
     # Determine data source
-    db_path = "uctp_database.db"
     
     if not sources['excel_files'] and not sources['existing_database']:
+        print('[DEBUG] Exiting early: No data sources found')
         print("\n❌ No data sources found!")
         print("Please provide either:")
         print("  1. Excel files in data/ directory (courses.xlsx, rooms.xlsx, preferences.xlsx)")
@@ -268,12 +346,26 @@ def main():
         # OPTIMIZATION: Use advanced heuristic with optimized sequential processing and simulated annealing
         heuristic = TimetableHeuristic(use_parallel=False, use_simulated_annealing=True)
         result = heuristic.build_timetable(courses, rooms, preferences)
+        # Report soft constraint satisfaction
+        heuristic.report_soft_constraint_stats()
         
-        timetable = result['timetable']
+        timetable_numpy = result['timetable']
         assigned_classes = result['assigned_classes']
         unassigned_classes = result['unassigned_classes']
         unassigned_courses = result['unassigned_courses']
-        
+
+        # Convert timetable numpy array to dictionary for output writer
+        from main import convert_numpy_timetable_to_dict
+        timetable_dict = convert_numpy_timetable_to_dict(
+            timetable_numpy, heuristic.days, heuristic.all_periods, courses, rooms
+        )
+
+        # Before generating output, print debug info about courses and class groups
+        unique_class_groups = set(str(course.get('ClassGroup') or 'MISSING') for course in courses)  # type: ignore
+        print(f"[DEBUG] Unique class groups in courses: {unique_class_groups}")
+        print(f"[DEBUG] Sample courses: {courses[:3]}")
+        print("[DEBUG] Sample timetable_dict for Monday, period 1:", json.dumps(timetable_dict.get('Monday', {}).get(1, {}), indent=2))
+
         # Generate output
         print("\n8. 📄 Generating output files...")
         output_dir = "output"
@@ -282,12 +374,12 @@ def main():
         try:
             # Write main timetable (includes individual class group sheets)
             timetable_path = output_writer.write_timetable_to_excel(
-                timetable, courses, rooms, professors, "timetable.xlsx"
+                timetable_dict, courses, rooms, professors, "timetable.xlsx"
             )
             
             # Write detailed report
             detailed_path = output_writer.write_detailed_report(
-                timetable, courses, rooms, professors, "detailed_report.xlsx"
+                timetable_dict, courses, rooms, professors, "detailed_report.xlsx"
             )
             
             print(f"✅ Output files created successfully")
