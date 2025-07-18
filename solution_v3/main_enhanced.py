@@ -20,6 +20,7 @@ from db import DatabaseLoader
 from heuristic import TimetableHeuristic
 from output_writer import OutputWriter
 import json
+from utils import convert_numpy_timetable_to_dict
 
 def find_dir_with_files(target_dirname, required_files):
     """Search upward from script and cwd for a directory named target_dirname containing all required_files."""
@@ -313,6 +314,7 @@ def main():
         
         # Get actual periods from heuristic
         heuristic = TimetableHeuristic()
+        heuristic.set_room_index_mapping(rooms)
         total_available_slots = 5 * len(heuristic.all_periods)  # 5 days * actual periods
         
         print(f"   - Total periods needed: {total_periods_needed}")
@@ -345,6 +347,7 @@ def main():
         print("\n7. 🏗️  Building timetable...")
         # OPTIMIZATION: Use advanced heuristic with optimized sequential processing and simulated annealing
         heuristic = TimetableHeuristic(use_parallel=False, use_simulated_annealing=True)
+        heuristic.set_room_index_mapping(rooms)
         result = heuristic.build_timetable(courses, rooms, preferences)
         # Report soft constraint satisfaction
         heuristic.report_soft_constraint_stats()
@@ -355,7 +358,6 @@ def main():
         unassigned_courses = result['unassigned_courses']
 
         # Convert timetable numpy array to dictionary for output writer
-        from main import convert_numpy_timetable_to_dict
         timetable_dict = convert_numpy_timetable_to_dict(
             timetable_numpy, heuristic.days, heuristic.all_periods, courses, rooms
         )
