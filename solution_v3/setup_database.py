@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 TimeTableGenerator Database Setup Script
-University Course Timetabling Problem (UCTP) Solver
+Course Timetabling Problem (CTP) Solver
 Mechanical Engineering Department (DEM)
 
 This script creates a simplified database with only the essential tables
@@ -17,7 +17,7 @@ def setup_database(db_path: str = "uctp_database.db"):
     
     print("=" * 60)
     print("TimeTableGenerator Database Setup")
-    print("University Course Timetabling Problem (UCTP) Solver")
+    print("Course Timetabling Problem (CTP) Solver")
     print("Mechanical Engineering Department (DEM)")
     print("=" * 60)
     

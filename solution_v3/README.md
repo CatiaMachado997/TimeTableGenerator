@@ -1,4 +1,4 @@
-# TimeTableGenerator - University Course Timetabling Problem (UCTP) Solver
+# TimeTableGenerator - Course Timetabling Problem (CTP) Solver
 
 ---
 
@@ -12,7 +12,7 @@
 ---
 
 ## Overview
-This project generates optimized university course timetables from real datasets. It supports direct Excel import, robust data validation, and produces output files for review and analysis.
+This project generates optimized course timetables from real datasets. It supports direct Excel import, robust data validation, and produces output files for review and analysis.
 
 ---
 

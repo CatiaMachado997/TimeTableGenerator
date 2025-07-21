@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Import Real Dataset Script
-TimeTableGenerator - University Course Timetabling Problem (UCTP) Solver
+TimeTableGenerator - Course Timetabling Problem (CTP) Solver
 
 This script imports the real dataset from the dataset folder into the database
 with the correct format for the TimeTableGenerator algorithm.
@@ -18,7 +18,7 @@ def import_real_data(db_path: str = "uctp_database.db"):
     
     print("=" * 60)
     print("TimeTableGenerator - Real Data Import")
-    print("University Course Timetabling Problem (UCTP) Solver")
+    print("Course Timetabling Problem (CTP) Solver")
     print("=" * 60)
     
     # Check if dataset files exist

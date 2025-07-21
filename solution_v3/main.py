@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-University Course Timetabling Problem (UCTP) Solver
-Mechanical Engineering Department (DEM)
+Course Timetabling Problem (CTP) Solver
 
-This script implements a heuristic approach to solve the UCTP with:
+This script implements a heuristic approach to solve the CTP with:
 - 30 periods per day (1-10 morning, 11-20 afternoon, 21-30 night)
 - Hard constraints: no double-booking, room type matching, consecutive periods
 - Soft constraints: professor preferences, year-based period preferences
@@ -23,8 +22,7 @@ def main():
     """Main function to run the timetabling solution"""
     
     print("=" * 60)
-    print("University Course Timetabling Problem (UCTP) Solver")
-    print("Mechanical Engineering Department (DEM)")
+    print("Course Timetabling Problem (CTP) Solver")
     print("=" * 60)
     
     # Configuration

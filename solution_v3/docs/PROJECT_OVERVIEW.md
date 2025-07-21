@@ -1,7 +1,7 @@
 # TimeTableGenerator - Project Overview
 
 ## Project Summary
-This project is a University Course Timetabling Problem (UCTP) solver for the Mechanical Engineering Department (DEM) at ISEP. It generates valid, constraint-respecting timetables for university courses, professors, and rooms, and outputs professional Excel reports.
+This project is a Course Timetabling Problem (CTP) solver. It generates valid, constraint-respecting timetables for courses, professors, and rooms, and outputs professional Excel reports.
 
 ## Key Features
 - **Heuristic-based scheduling algorithm** with simulated annealing optimization
@@ -12,7 +12,7 @@ This project is a University Course Timetabling Problem (UCTP) solver for the Me
 - **Performance**: Schedules 60+ courses in under a second
 
 ## Major Improvements
-- Switched from a 200-period to a 30-period per day system to match real university data
+- Switched from a 200-period to a 30-period per day system to match real data
 - Added robust data import scripts for real and test datasets
 - Created flexible import for new datasets with the same structure
 - Added comprehensive constraint validation and reporting
@@ -33,4 +33,4 @@ This project is a University Course Timetabling Problem (UCTP) solver for the Me
 - `output/unassigned_courses.csv`: List of any unassigned courses (if any)
 
 ## Ready for Production
-- The system is now production-ready and can be used for real university scheduling or further research/automation. 
+- The system is now production-ready and can be used for real scheduling or further research/automation. 

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 class TimetableHeuristic:
     def __init__(self, use_parallel=True, use_simulated_annealing=True):
-        # Period structure: 30 periods per day (real university data format)
+        # Period structure: 30 periods per day (real data format)
         # Periods 1-15: Morning (8:00-12:00)
         # Periods 16-25: Afternoon (13:00-17:00) 
         # Periods 26-30: Night (18:00-22:00)

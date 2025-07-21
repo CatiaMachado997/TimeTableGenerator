@@ -1,7 +1,6 @@
 -- =====================================================
 -- TimeTableGenerator Database Setup
--- University Course Timetabling Problem (UCTP) Solver
--- Mechanical Engineering Department (DEM) - ISEP
+-- Course Timetabling Problem (CTP) Solver
 -- =====================================================
 
 -- Drop existing tables if they exist (in reverse dependency order)

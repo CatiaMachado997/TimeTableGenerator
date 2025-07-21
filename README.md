@@ -5,14 +5,14 @@
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://github.com/CatiaMachado997/TimeTableGenerator)
 [![Performance](https://img.shields.io/badge/Performance-100%25%20Assignment%20Rate-success.svg)](https://github.com/CatiaMachado997/TimeTableGenerator)
 
-> **Advanced University Course Timetabling Problem (UCTP) Solver**  
+> **Advanced Course Timetabling Problem (CTP) Solver**  
 > *Generate optimal timetables with 100% assignment rate in sub-second processing*
 
-A comprehensive, production-ready solution for the University Course Timetabling Problem featuring advanced optimization algorithms, new dataset support, and intelligent constraint handling.
+A comprehensive, production-ready solution for the Course Timetabling Problem featuring advanced optimization algorithms, new dataset support, and intelligent constraint handling.
 
 ## 🎯 Overview
 
-This project implements an advanced, highly-optimized heuristic approach to solve the University Course Timetabling Problem for the Mechanical Engineering Department (DEM) at ISEP. The solution features:
+This project implements an advanced, highly-optimized heuristic approach to solve the Course Timetabling Problem. The solution features:
 
 <div align="center">
 
@@ -192,7 +192,7 @@ Dataset: 450+ courses, 50+ rooms, 30+ professors
 ```
 
 ### 🏆 **Performance Highlights**
-- **Sub-second processing** for typical university datasets
+- **Sub-second processing** for typical datasets
 - **100% assignment rate** with intelligent constraint handling
 - **Memory efficient** using numpy arrays and bitmasks
 - **Production ready** with comprehensive error handling
@@ -264,7 +264,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **ISEP Mechanical Engineering Department (DEM)** for the original problem specification
+- **Original problem specification** for the initial dataset
 - **Advanced optimization techniques** including bitmask operations and simulated annealing
 - **Python ecosystem** for pandas, numpy, and openpyxl libraries
 

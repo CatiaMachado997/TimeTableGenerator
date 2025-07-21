@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Import New Dataset Script
-TimeTableGenerator - University Course Timetabling Problem (UCTP) Solver
+TimeTableGenerator - Course Timetabling Problem (CTP) Solver
 
 This script imports a new dataset with the same structure as the original
 but different data. You can specify custom file paths for courses and preferences.
@@ -18,7 +18,7 @@ def import_new_dataset(courses_file: str, preferences_file: str, db_path: str = 
     
     print("=" * 60)
     print("TimeTableGenerator - New Dataset Import")
-    print("University Course Timetabling Problem (UCTP) Solver")
+    print("Course Timetabling Problem (CTP) Solver")
     print("=" * 60)
     
     # Check if dataset files exist

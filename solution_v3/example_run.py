@@ -3,7 +3,7 @@
 Example: How to Run UCTP Solver on a New Dataset from Scratch
 
 This script demonstrates the complete workflow for setting up and running
-the University Course Timetabling Problem (UCTP) solver on a new dataset.
+the Course Timetabling Problem (CTP) solver on a new dataset.
 
 Prerequisites:
 - Python 3.10+

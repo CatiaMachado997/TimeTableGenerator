@@ -1,6 +1,6 @@
-# Complete Guide: UCTP Solver for New Datasets
+# Complete Guide: CTP Solver for New Datasets
 
-This comprehensive guide explains how to use the UCTP (University Course Timetabling Problem) solver with your own dataset from scratch.
+This comprehensive guide explains how to use the CTP (Course Timetabling Problem) solver with your own dataset from scratch.
 
 ## Table of Contents
 
